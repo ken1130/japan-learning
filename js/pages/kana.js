@@ -33,6 +33,10 @@ export function render(root) {
     const [word, meaning] = info.example || [];
     const isWord = word && !word.startsWith('（');
     return `
+      <div class="sheet-bar">
+        <span class="sheet-handle" aria-hidden="true"></span>
+        <button class="sheet-close" id="sheetClose" aria-label="關閉說明">✕ 關閉</button>
+      </div>
       <div class="kdetail-inner">
         <button class="flip3d" id="flip" aria-label="翻面看拼音和字源">
           <span class="face front"><span>${k}</span></span>
@@ -102,10 +106,11 @@ export function render(root) {
           </div>
         </div>
 
-        <aside class="kdetail card" id="detail">
-          <p class="muted">👈 點任何一個假名，看字源、例字、聽發音</p>
+        <aside class="kdetail card" id="detail" aria-live="polite">
+          <p class="muted">👈 點任何一個假名，看字源、例字、筆順、聽發音</p>
         </aside>
       </div>
+      <div class="sheet-scrim" id="sheetScrim" hidden></div>
     `;
     if (selected) showDetail(selected.k, selected.r, false);
   }
@@ -126,13 +131,45 @@ export function render(root) {
     void d.offsetWidth;
     d.classList.add('pop');
     if (say) speak(k);
-    if (matchMedia('(max-width: 760px)').matches) d.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    // 手機：說明從畫面下方滑出（bottom sheet），不用捲到頁尾
+    if (say && phone.matches) openSheet();
   }
+
+  const phone = window.matchMedia('(max-width: 760px)');
+  function openSheet() {
+    const d = root.querySelector('#detail');
+    d.classList.add('sheet-open');
+    d.scrollTop = 0;
+    root.querySelector('#sheetScrim').hidden = false;
+    document.body.classList.add('no-scroll');
+  }
+  function closeSheet() {
+    root.querySelector('#detail')?.classList.remove('sheet-open');
+    const s = root.querySelector('#sheetScrim');
+    if (s) s.hidden = true;
+    document.body.classList.remove('no-scroll');
+  }
+  // 往下滑關閉
+  let touchY = null;
+  root.addEventListener('touchstart', (e) => {
+    const d = e.target.closest('#detail.sheet-open');
+    touchY = d && d.scrollTop <= 0 ? e.touches[0].clientY : null;
+  }, { passive: true });
+  root.addEventListener('touchend', (e) => {
+    if (touchY != null && e.changedTouches[0].clientY - touchY > 80) closeSheet();
+    touchY = null;
+  });
+  const onKey = (e) => {
+    if (e.key === 'Escape') closeSheet();
+  };
+  document.addEventListener('keydown', onKey);
+  phone.addEventListener('change', closeSheet);
 
   root.addEventListener('click', (e) => {
     const seg = e.target.closest('[data-script]');
     if (seg) {
       script = seg.dataset.script;
+      closeSheet();
       if (selected) {
         selected = { k: script === 'kata' ? toKatakana(selected.k) : toHiragana(selected.k), r: selected.r };
       }
@@ -144,8 +181,14 @@ export function render(root) {
     const flip = e.target.closest('#flip');
     if (flip) flip.classList.toggle('flipped');
     if (e.target.closest('#replayStroke')) strokeCtl?.replay();
+    if (e.target.closest('#sheetClose') || e.target.closest('#sheetScrim')) closeSheet();
   });
 
   draw();
-  return () => strokeCtl?.stop();
+  return () => {
+    strokeCtl?.stop();
+    closeSheet();
+    document.removeEventListener('keydown', onKey);
+    phone.removeEventListener('change', closeSheet);
+  };
 }

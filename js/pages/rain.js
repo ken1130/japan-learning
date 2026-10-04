@@ -16,11 +16,11 @@ const BEST_KEY = 'tabi-nihongo-rain-best';
 export async function render(root) {
   const cfg = { script: 'hira', range: 'basic' };
   root.innerHTML = `
-    <header class="page-head">
+    <header class="page-head rain-head">
       <h1>假名雨 <small>🌧️ 打字小遊戲</small></h1>
       <p class="lead">假名會從天空落下，輸入它的羅馬拼音按 Enter（或直接打完）就能打散它。落到地面會扣一條命，共 3 條命。</p>
     </header>
-    <div class="rain-wrap">
+    <div class="rain-wrap" id="rainWrap">
       <div class="rain-canvas" id="rainCanvas">
         <div class="rain-overlay" id="overlay">
           <h2>準備好了嗎？</h2>
@@ -135,7 +135,34 @@ export async function render(root) {
     }
   });
 
-  return () => game.dispose();
+  // ---- 手機鍵盤：鍵盤跳出時，把遊戲區縮到「鍵盤上方剩下的空間」 ----
+  // visualViewport.height 是扣掉鍵盤後真正看得到的高度
+  const vv = window.visualViewport;
+  const hud = root.querySelector('.rain-hud');
+  function fitKeyboard() {
+    if (!vv) return;
+    const kbOpen = document.activeElement === input && window.innerHeight - vv.height > 120;
+    document.body.classList.toggle('kb-open', kbOpen);
+    if (kbOpen) {
+      // 鍵盤開著：隱藏標題列與說明，遊戲區＋輸入列剛好塞滿鍵盤上方
+      const avail = vv.height - hud.offsetHeight - 24;
+      holder.style.height = Math.max(160, Math.round(avail)) + 'px';
+      window.scrollTo(0, 0);
+    } else {
+      holder.style.height = '';
+    }
+  }
+  vv?.addEventListener('resize', fitKeyboard);
+  vv?.addEventListener('scroll', fitKeyboard);
+  input.addEventListener('focus', () => setTimeout(fitKeyboard, 250));
+  input.addEventListener('blur', () => setTimeout(fitKeyboard, 100));
+
+  return () => {
+    game.dispose();
+    vv?.removeEventListener('resize', fitKeyboard);
+    vv?.removeEventListener('scroll', fitKeyboard);
+    document.body.classList.remove('kb-open');
+  };
 }
 
 function localStorageGet(k) {

@@ -32,7 +32,7 @@ def overflow(page):
     }""")
 
 
-def interactions(page, errors, log):
+def interactions(page, errors, log, vp="desktop"):
     def step(name, fn):
         try:
             fn()
@@ -119,6 +119,52 @@ def interactions(page, errors, log):
         go("review")
         page.wait_for_selector(".stats-row")
 
+    def sidebar_fits():
+        go("sushi")
+        page.evaluate("localStorage.removeItem('tabi-nihongo-nav')")
+        go("sushi")
+        info = page.evaluate("""() => { const s = document.getElementById('sidebar');
+            return { over: s.scrollHeight - s.clientHeight, activeVisible: !!document.querySelector('#sidebar a.active')?.offsetParent }; }""")
+        assert info["over"] <= 2, f"側欄超出 {info['over']}px"
+        assert info["activeVisible"], "目前頁面的選單項目被收起來了"
+
+    def kana_sheet():
+        go("kana")
+        page.click('.kcell[data-k="か"]')
+        page.wait_for_timeout(400)
+        box = page.locator("#detail").bounding_box()
+        assert box and box["y"] < page.viewport_size["height"] - 100, "說明面板沒有滑出來"
+        assert page.locator("#sheetScrim").is_visible()
+        page.click("#sheetClose")
+        page.wait_for_timeout(400)
+        assert not page.locator("#sheetScrim").is_visible(), "關閉後遮罩還在"
+
+    def rain_keyboard():
+        kb = page.context.new_page()
+        # 模擬手機鍵盤：可見高度只剩 380px
+        kb.add_init_script("""(() => { const vv = new EventTarget(); vv.height = window.innerHeight;
+            Object.defineProperty(window, 'visualViewport', { value: vv, configurable: true }); window.__vv = vv; })()""")
+        kb.goto(f"{BASE}/#/rain")
+        kb.wait_for_selector("#go", timeout=10000)
+        kb.wait_for_timeout(800)
+        kb.click("#go")
+        kb.focus("#answer")
+        kb.evaluate("window.__vv.height = 380; window.__vv.dispatchEvent(new Event('resize'))")
+        kb.wait_for_timeout(400)
+        r = kb.evaluate("""() => ({ kb: document.body.classList.contains('kb-open'),
+            hudBottom: document.querySelector('.rain-hud').getBoundingClientRect().bottom })""")
+        kb.close()
+        assert r["kb"], "沒有偵測到鍵盤"
+        assert r["hudBottom"] <= 380, f"輸入列被鍵盤擋住（底部在 {r['hudBottom']}px）"
+
+    checks = []
+    if vp == "desktop":
+        checks.append(("側欄塞得下", sidebar_fits))
+    if vp == "phone":
+        checks += [("五十音底部面板", kana_sheet), ("假名雨鍵盤", rain_keyboard)]
+    for name, fn in checks:
+        step(name, fn)
+
     for name, fn in [("五十音筆順", kana_stroke), ("售票機買票", train_machine), ("山手線廣播", train_game),
                      ("壽司平板點餐", sushi_order), ("便利商店商品", konbini), ("旅行小抄全螢幕", cheat),
                      ("跟讀換句", speak_page), ("自我介紹對話", dialogue_new), ("家人分類說明", family_intro),
@@ -158,7 +204,7 @@ def main():
                     errors.append(f"#/{r}: 水平溢出 {ov}")
                 if shots:
                     page.screenshot(path=str(shots / f"{vp}-{r.replace('?', '_') or 'home'}.png"), full_page=False)
-            interactions(page, errors, log)
+            interactions(page, errors, log, vp)
             print(f"== {vp} {w}x{h}")
             print("\n".join(log))
             if errors:

@@ -80,6 +80,7 @@ async function route() {
   }
   cleanup = typeof result === 'function' ? result : null;
   updateBadge();
+  fitNav();
   // 換頁後把焦點移到新頁標題，鍵盤／螢幕報讀使用者才知道頁面換了
   const h1 = view.querySelector('h1');
   if (h1 && document.activeElement && (document.activeElement === document.body || !document.activeElement.isConnected || sidebar.contains(document.activeElement))) {
@@ -106,6 +107,53 @@ document.addEventListener('click', (e) => {
   e.stopPropagation();
   el.classList.add('speaking');
   speak(el.dataset.say).then(() => el.classList.remove('speaking'));
+});
+
+// ---- 側欄分組收合 ----
+// 使用者手動收合過的分組記在 localStorage；沒手動設定時，桌機版螢幕不夠高就自動收合「目前頁面以外」的分組
+const NAV_KEY = 'tabi-nihongo-nav';
+const navGroups = [...document.querySelectorAll('.nav-group')];
+const groupName = (g) => g.querySelector('.nav-title').firstChild.textContent.trim();
+function loadNavPref() {
+  try {
+    return JSON.parse(localStorage.getItem(NAV_KEY));
+  } catch {
+    return null;
+  }
+}
+let navPref = loadNavPref(); // null = 自動；否則是被收合的分組名稱陣列
+
+function setCollapsed(g, on) {
+  g.classList.toggle('collapsed', on);
+  g.querySelector('.nav-title').setAttribute('aria-expanded', String(!on));
+}
+function fitNav() {
+  const sidebarEl = document.getElementById('sidebar');
+  if (navPref) {
+    navGroups.forEach((g) => setCollapsed(g, navPref.includes(groupName(g)) && !g.querySelector('a.active')));
+    return;
+  }
+  navGroups.forEach((g) => setCollapsed(g, false));
+  const desktop = window.matchMedia('(min-width: 1101px)').matches;
+  if (desktop && sidebarEl.scrollHeight > sidebarEl.clientHeight + 2) {
+    navGroups.forEach((g) => setCollapsed(g, !g.querySelector('a.active') && groupName(g) !== '開始'));
+  }
+}
+navGroups.forEach((g) => {
+  g.querySelector('.nav-title').addEventListener('click', () => {
+    setCollapsed(g, !g.classList.contains('collapsed'));
+    navPref = navGroups.filter((x) => x.classList.contains('collapsed')).map(groupName);
+    try {
+      localStorage.setItem(NAV_KEY, JSON.stringify(navPref));
+    } catch {
+      /* ignore */
+    }
+  });
+});
+let navResizeTimer = 0;
+window.addEventListener('resize', () => {
+  clearTimeout(navResizeTimer);
+  navResizeTimer = setTimeout(fitNav, 150);
 });
 
 // ---- 手機抽屜選單 ----

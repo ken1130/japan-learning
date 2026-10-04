@@ -1,7 +1,7 @@
 // Service Worker：讓網站可以離線使用（PWA）
 // ⚠ ASSETS 清單由 tools/build-sw.py 自動產生，新增或刪除檔案後請執行：python3 tools/build-sw.py
 // <ASSETS>
-const VERSION = '805bff1929';
+const VERSION = 'e2ba0ce12c';
 const ASSETS = [
   './',
   'index.html',
