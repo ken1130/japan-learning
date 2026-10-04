@@ -18,6 +18,9 @@ description: 在旅日語網站新增或修改學習內容（會話句、菜單�
 | 商店單字 | `js/data/shopping.js` | `SHOP`（分類 `SHOP_CATS`） |
 | 商店模擬看板 | `js/data/shopping.js` | `BOARDS`（片段：字串／`{ v: SHOP.jp }`／`{ t, kana, zh }`） |
 | 情境對話 | `js/data/dialogues.js` | `DIALOGUES`（新步驟只能加在最後，不要調換順序：進度 id 用步驟索引） |
+| 3D 便利商店商品 | `js/data/konbini.js` | `KONBINI`（`shelf` 決定放哪個貨架、`color` 是包裝顏色） |
+| 迴轉壽司 | `js/data/sushi.js` | `SUSHI`／`SUSHI_TERMS` |
+| 電車 | `js/data/train.js` | `YAMANOTE`（順序＝外回り，不可打亂）、`FARES_FROM_TOKYO`（示意票價）、`TRAIN_WORDS` |
 | 3D 街景招牌 | `js/data/signs.js` | `SCENE_SIGNS`（`jp` 必須已在 `SIGNS` 裡） |
 | 數字／量詞 | `js/data/numbers.js` | 對應常數 |
 
@@ -74,5 +77,5 @@ description: 在旅日語網站新增或修改學習內容（會話句、菜單�
    ```bash
    python3 .claude/skills/japanese-content-review/check_data.py
    ```
-3. 在 `docs/CHANGELOG.md` 最上面加一行。
+3. 在 `docs/CHANGELOG.md` 最上面加一行，並執行 `python3 tools/build-sw.py` 更新離線快取清單。
 4. 啟動 `python3 -m http.server 8000`，打開對應頁面點幾個 🔊 確認發音正常。

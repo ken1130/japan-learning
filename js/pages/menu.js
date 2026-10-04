@@ -135,7 +135,7 @@ export function render(root) {
       const d = root.querySelector('#itemDetail');
       d.innerHTML = itemDetail(it);
       speak(it.kana);
-      if (window.innerWidth < 900) d.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      if (matchMedia('(max-width: 760px)').matches) d.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       return;
     }
     const vc = t.closest('[data-vcat]');

@@ -126,7 +126,7 @@ export function render(root) {
     void d.offsetWidth;
     d.classList.add('pop');
     if (say) speak(k);
-    if (window.innerWidth < 900) d.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    if (matchMedia('(max-width: 760px)').matches) d.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 
   root.addEventListener('click', (e) => {

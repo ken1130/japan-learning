@@ -23,4 +23,21 @@
 
 ## 想重設進度
 
-首頁最下方「重設學習進度」。設定（語速、主題）會保留。
+「弱點複習」頁最下方「清除所有進度」（建議先下載備份）。設定（語速、主題）會保留。
+
+## 改了程式但網頁沒更新
+
+網站有離線快取（Service Worker），會先顯示舊版、背景下載新版：**重新整理兩次**就會看到新版。
+開發時可以在 DevTools → Application → Service Workers 勾選「Update on reload」。
+修改檔案後記得執行 `python3 tools/build-sw.py`，線上版的使用者才會收到更新。
+
+## 跟讀練習不能用
+
+- 需要 Chrome／Edge（電腦、Android）或 Safari（iPhone），Firefox 不支援語音辨識。
+- 第一次使用要允許麥克風：網址列左邊的鎖頭圖示 → 麥克風 → 允許。
+- Chrome 的語音辨識需要網路。
+
+## 安裝到手機主畫面
+
+- Android（Chrome）：右上角選單 →「安裝應用程式」，或設定面板的「安裝」按鈕。
+- iPhone（Safari）：分享按鈕 →「加入主畫面」。

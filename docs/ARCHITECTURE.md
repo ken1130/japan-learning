@@ -48,6 +48,10 @@ index.html
 | `js/data/signs.js` | 招牌單字與 3D 街景用的招牌設定 |
 | `js/data/shopping.js` | 商店單字、可點擊的模擬看板 `BOARDS`、尺寸表 |
 | `js/data/dialogues.js` | 情境對話腳本（`reply` 回答題／`understand` 聽懂題） |
+| `js/data/konbini.js` | 3D 便利商店的商品（貨架、價格、包裝顏色） |
+| `js/data/sushi.js` | 迴轉壽司菜單與平板用語 |
+| `js/data/train.js` | 山手線車站（外回り順序、轉乘）、售票機票價（示意）、電車單字 |
+| `js/strokes.js` | 讀取 `assets/kanjivg/*.svg`，用 Web Animations API 一筆一筆畫出筆順 |
 | `js/data/registry.js` | 把所有資料統一成 `{ id, type, show, sub, say, zh }`，弱點複習用它出題 |
 | `js/data/numbers.js` | `numberToKana()`（處理 300/600/800/3000/8000 音變）、量詞、時間 |
 
@@ -61,6 +65,10 @@ index.html
 | 招牌 | `sign:<jp>` | `sign:出口` |
 | 商店單字 | `shop:<jp>` | `shop:メンズ` |
 | 對話步驟 | `dlg:<對話id>:<步驟索引>` | `dlg:konbini:2` |
+| 便利商店 | `konbini:<jp>` | `konbini:肉まん` |
+| 壽司 | `sushi:<jp>` | `sushi:中トロ` |
+| 電車單字 | `train:<jp>` | `train:切符` |
+| 車站讀音 | `station:<jp>` | `station:新宿` |
 
 改了 id 或 jp，舊的進度就會對不上，所以**不要改已存在的**。
 
@@ -73,6 +81,7 @@ index.html
 | `hero.js` | 首頁 | 低多邊形富士山、夕陽、InstancedMesh 櫻花、可點擊的假名方塊 |
 | `signStreet.js` | 招牌頁 | 夜晚街道、建築、直書／橫書招牌（Raycaster 點選）、燈籠 |
 | `kanaRain.js` | 假名雨 | Sprite 假名落下、粒子爆炸、鳥居 |
+| `konbini.js` | 3D 便利商店 | 店內房間、四組貨架（含冷藏櫃、櫃台）、CanvasTexture 商品包裝、Raycaster 點選 |
 | `textTexture.js` | 共用 | 文字 → CanvasTexture（支援直書）、`disposeScene()`、`autoResize()`、WebGL 偵測 |
 
 規範：等字型載入（`fontsReady()`）再畫貼圖；用 `ResizeObserver` 跟容器同步大小；回傳的 dispose 要釋放 renderer、geometry、material、texture 與事件。
@@ -82,3 +91,19 @@ index.html
 
 `css/style.css` 單一檔案，色彩全部用 CSS 變數，深色主題在 `prefers-color-scheme` 與 `[data-theme]` 兩處定義（使用者可在設定強制淺／深色）。
 `body.hide-romaji` 隱藏所有 `.romaji`，給想脫離拼音的時候用。
+
+## 離線版（PWA）
+
+- `manifest.webmanifest`：App 名稱、圖示（`assets/icons/`）、`start_url: ./`（支援 GitHub Pages 子路徑）
+- `sw.js`：安裝時預先快取 `ASSETS` 清單（全部本地檔案）＋ three.js 與 Google 字型；之後用 stale-while-revalidate（先回快取、背景更新）。頁面導覽離線時回傳快取的 `index.html`
+- **`ASSETS` 清單與版本號由 `python3 tools/build-sw.py` 產生**。新增／修改檔案後一定要執行，版本號（檔案內容雜湊）改變後，使用者的快取才會更新
+- 設定面板會顯示離線資料狀態，Android／桌面 Chrome 會出現「安裝」按鈕
+
+## 測試
+
+`tools/smoke_test.py`（Playwright）：19 個路由 × 桌機 1366／平板 820／手機 375，檢查 JS 錯誤、水平溢出，並操作主要流程（筆順、售票機、壽司點餐、小抄全螢幕、對話走到結尾…）。
+
+```bash
+python3 -m http.server 8000 &
+python3 tools/smoke_test.py --shots /tmp/shots
+```

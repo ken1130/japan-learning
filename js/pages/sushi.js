@@ -119,9 +119,11 @@ export function render(root) {
       ${beltHtml()}
       <div class="mission">🎯 任務：點 ${missionText()} <button class="linklike" id="newMission">換一個任務</button></div>
       <div class="sushi-layout">
-        <div id="tabletWrap">${tabletHtml()}</div>
+        <div>
+          <div id="tabletWrap">${tabletHtml()}</div>
+          <label class="switch tb-hints"><input type="checkbox" id="hints" ${hints ? 'checked' : ''}/> 平板上顯示中文提示</label>
+        </div>
         <div class="card sushi-side">
-          <label class="switch"><input type="checkbox" id="hints" ${hints ? 'checked' : ''}/> 顯示中文提示</label>
           <h3>🍵 店內用語</h3>
           <div class="term-list">
             ${SUSHI_TERMS.map((t) => `<button class="term" data-say="${esc(t.kana)}"><b class="jp">${esc(t.jp)}</b><span>${esc(t.zh)}</span>${t.tip ? `<small>💡 ${esc(t.tip)}</small>` : ''}</button>`).join('')}
@@ -191,6 +193,7 @@ export function render(root) {
       detail = { item, qty: 1, sabi: false };
       view = 'menu';
       redrawTablet();
+      root.querySelector('[data-order]')?.focus({ preventScroll: true });
       speak(item.kana);
       return;
     }
@@ -199,7 +202,8 @@ export function render(root) {
       detail.qty = Math.min(4, Math.max(1, detail.qty + Number(q.dataset.qty)));
       return redrawTablet();
     }
-    if (t.closest('[data-close]')) {
+    // 點對話框外的半透明背景也能關閉
+    if (t.closest('[data-close]') || t.classList.contains('tb-modal')) {
       detail = null;
       return redrawTablet();
     }

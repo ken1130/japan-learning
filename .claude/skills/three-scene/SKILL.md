@@ -45,7 +45,7 @@ return () => scene.dispose();   // 頁面的 cleanup
 ## 風格
 
 - 低多邊形（`flatShading: true`）、日系配色：朱紅 `#c8402f`、藍 `#2b4c7e`、櫻粉 `#f7b7c8`、和紙 `#fffaf0`。
-- 參考現有場景：`hero.js`（漂浮＋點擊發音）、`signStreet.js`（可走動的街景＋招牌）、`kanaRain.js`（遊戲迴圈＋粒子）。
+- 參考現有場景：`hero.js`（漂浮＋點擊發音）、`signStreet.js`（可走動的街景＋招牌）、`kanaRain.js`（遊戲迴圈＋粒子）、`konbini.js`（室內場景＋貨架商品＋轉頭視角）。
 
 ## 完成後
 

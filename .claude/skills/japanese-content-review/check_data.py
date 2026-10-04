@@ -123,7 +123,23 @@ for block in re.split(r"\n      \{\n        type: ", dl)[1:]:
     if "ok: true" not in block.split("\n      },")[0]:
         errors.append(f"對話步驟沒有正確答案：{block[:80]}")
 
-print(f"phrases {len(phrases)}・food {len(food)}・signs {len(signs)}・shop {len(shop)}・dialogues {len(dlg_ids)}")
+# ---- 便利商店／壽司／電車 ----
+extra = 0
+for fname, arrays in [("konbini.js", ["KONBINI"]), ("sushi.js", ["SUSHI", "SUSHI_TERMS"]), ("train.js", ["YAMANOTE", "TRAIN_WORDS"])]:
+    txt = (DATA / fname).read_text(encoding="utf-8")
+    for arr in arrays:
+        objs = objects(txt, arr)
+        extra += len(objs)
+        check_dupes(f"{arr} jp", [field(o, "jp") for o in objs])
+        for o in objs:
+            check_kana(f"{arr} {field(o, 'jp')}", o)
+tr = (DATA / "train.js").read_text(encoding="utf-8")
+stations = [field(o, "jp") for o in objects(tr, "YAMANOTE")]
+for to in re.findall(r"to: '([^']+)'", tr):
+    if to not in stations:
+        errors.append(f"FARES_FROM_TOKYO 的目的地不在 YAMANOTE：{to}")
+
+print(f"phrases {len(phrases)}・food {len(food)}・signs {len(signs)}・shop {len(shop)}・dialogues {len(dlg_ids)}・konbini/sushi/train {extra}")
 if errors:
     print(f"\n❌ {len(errors)} 個問題：")
     for e in errors:

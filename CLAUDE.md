@@ -9,6 +9,9 @@
 - 本機測試：`python3 -m http.server 8000`（或 `start.bat` / `start.sh`）。
 - 所有 Markdown 文件放 `docs/`；日文學習參考資料放 `references/`；Claude 技能放 `.claude/skills/`。
 - 任何改動都要在 `docs/CHANGELOG.md` 補一行。
+- **新增、刪除或修改網站檔案後執行 `python3 tools/build-sw.py`**（更新離線快取清單，否則線上使用者看不到新版）。
+- 推上 GitHub 前跑 `tools/smoke_test.py`（Playwright，見 docs/ARCHITECTURE.md「測試」）。
+- 線上版：https://ken1130.github.io/japan-learning/（GitHub Pages，`main` 分支根目錄）。
 
 ## 內容資料
 
