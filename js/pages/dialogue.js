@@ -88,7 +88,7 @@ export function render(root) {
       <div class="dlg-play">
         <div class="dlg-top">
           <button class="btn small ghost" id="toList">← 對話列表</button>
-          <b>${dlg.icon} ${esc(dlg.title)}</b>
+          <h1 class="dlg-title">${dlg.icon} ${esc(dlg.title)}</h1>
           <span class="muted">${step + 1} / ${dlg.steps.length}</span>
         </div>
         <span class="bar"><i style="width:${(step / dlg.steps.length) * 100}%"></i></span>
@@ -158,6 +158,7 @@ export function render(root) {
     const missed = dlg.steps.map((st, i) => ({ st, i })).filter(({ i }) => results[i] === false);
     root.innerHTML = `
       <div class="card summary">
+        <h1 class="dlg-title">${dlg.icon} ${esc(dlg.title)}・結果</h1>
         <div class="score-ring" style="--p:${pct}"><span>${ok}/${dlg.steps.length}</span></div>
         <h2>${pct === 100 ? '完璧！一次全對！' : pct >= 70 ? 'すごい！很不錯！' : '多練幾次就會越來越順 💪'}</h2>
         ${missed.length ? `

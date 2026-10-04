@@ -6,6 +6,11 @@
   <title>旅日語 Tabi Nihongo</title>
   <meta name="description" content="零基礎、為旅行而學的日文網站：假名、旅遊會話、菜單與招牌。" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='46' fill='%23c8402f'/><text x='50' y='68' font-size='52' text-anchor='middle' fill='white' font-family='sans-serif'>あ</text></svg>" />
+  <meta name="theme-color" content="#c8402f" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="旅日語" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&family=Noto+Sans+TC:wght@400;700&family=Noto+Serif+JP:wght@700&display=swap" rel="stylesheet" />
@@ -43,6 +48,7 @@
         <a href="#/phrases" data-route="phrases"><i>💬</i>旅遊會話</a>
         <a href="#/dialogue" data-route="dialogue"><i>🎭</i>情境對話</a>
         <a href="#/listen" data-route="listen"><i>🎧</i>聽力練習</a>
+        <a href="#/speak" data-route="speak"><i>🎤</i>跟讀練習</a>
         <a href="#/numbers" data-route="numbers"><i>💴</i>數字價格</a>
       </div>
       <div class="nav-group">
@@ -52,8 +58,15 @@
         <a href="#/signs" data-route="signs"><i>🏮</i>街頭招牌</a>
       </div>
       <div class="nav-group">
+        <span class="nav-title">旅行實戰</span>
+        <a href="#/konbini" data-route="konbini"><i>🏪</i>3D 便利商店</a>
+        <a href="#/train" data-route="train"><i>🚃</i>搭電車</a>
+        <a href="#/sushi" data-route="sushi"><i>🍣</i>迴轉壽司</a>
+      </div>
+      <div class="nav-group">
         <span class="nav-title">我的</span>
         <a href="#/review" data-route="review"><i>📊</i>弱點複習<b class="nav-badge" id="weakBadge" hidden></b></a>
+        <a href="#/cheat" data-route="cheat"><i>📇</i>旅行小抄</a>
       </div>
     </nav>
   </aside>
@@ -81,6 +94,10 @@
     </label>
     <p class="muted small" id="voiceInfo"></p>
     <button class="btn ghost small" id="testVoice">試聽「こんにちは」</button>
+    <hr class="sep" />
+    <p class="small" id="offlineInfo">📴 離線版：檢查中…</p>
+    <button class="btn small primary" id="installBtn" hidden>📲 安裝到桌面／主畫面</button>
+    <p class="muted small" id="installHint"></p>
   </div>
 
   <main id="app" class="app"></main>

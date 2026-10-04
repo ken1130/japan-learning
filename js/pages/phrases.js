@@ -53,7 +53,9 @@ export function render(root) {
         <span class="muted">${catInfo ? catInfo.desc : cat === 'fav' ? '你收藏的句子' : '所有「你會聽到」的句子'}・${items.length} 句</span>
         <label class="switch"><input type="checkbox" id="practice" ${practice ? 'checked' : ''}/> 練習模式（先遮住中文）</label>
         <button class="btn small ghost" id="playAll">▶ 全部播放</button>
+        ${catInfo ? `<a class="btn small ghost" href="#/speak?cat=${cat}">🎤 跟讀這組</a>` : ''}
       </div>
+      ${catInfo?.intro ? `<div class="callout cat-intro">${catInfo.intro}</div>` : ''}
       <div class="phrase-list">
         ${items.length ? items.map(card).join('') : '<p class="muted">還沒有收藏，點句子旁邊的 ☆ 就能收藏。</p>'}
       </div>`;

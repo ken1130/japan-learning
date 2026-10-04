@@ -112,8 +112,13 @@ export async function render(root) {
           <a href="#/rain">🌧️ 假名雨遊戲</a>
           <a href="#/dialogue">🎭 情境對話</a>
           <a href="#/listen">🎧 聽力練習</a>
+          <a href="#/speak">🎤 跟讀練習</a>
+          <a href="#/konbini">🏪 3D 便利商店</a>
+          <a href="#/train">🚃 搭電車</a>
+          <a href="#/sushi">🍣 迴轉壽司</a>
           <a href="#/shop">👕 看懂商店</a>
           <a href="#/signs">🏮 3D 街頭招牌</a>
+          <a href="#/cheat">📇 旅行小抄</a>
         </div>
       </div>
     </section>

@@ -16,6 +16,11 @@ const ROUTES = {
   shop: { name: '看懂商店', load: () => import('./pages/shop.js') },
   signs: { name: '街頭招牌', load: () => import('./pages/signs.js') },
   review: { name: '弱點複習', load: () => import('./pages/review.js') },
+  speak: { name: '跟讀練習', load: () => import('./pages/speak.js') },
+  konbini: { name: '3D 便利商店', load: () => import('./pages/konbini.js') },
+  train: { name: '搭電車', load: () => import('./pages/train.js') },
+  sushi: { name: '迴轉壽司', load: () => import('./pages/sushi.js') },
+  cheat: { name: '旅行小抄', load: () => import('./pages/cheat.js') },
 };
 
 const app = document.getElementById('app');
@@ -192,5 +197,53 @@ themeInput.addEventListener('change', () => {
   applyTheme();
 });
 document.getElementById('testVoice').addEventListener('click', () => speak('こんにちは'));
+
+// ---- PWA：離線版與安裝 ----
+const offlineInfo = document.getElementById('offlineInfo');
+const installBtn = document.getElementById('installBtn');
+const installHint = document.getElementById('installHint');
+let installEvent = null;
+
+function updateOfflineInfo() {
+  if (!('serviceWorker' in navigator) || location.protocol === 'file:') {
+    offlineInfo.textContent = '📴 離線版：這個瀏覽器不支援';
+    return;
+  }
+  const ctrl = navigator.serviceWorker.controller;
+  if (!ctrl) {
+    offlineInfo.textContent = '📴 離線版：下載中，重新整理一次後即可離線使用';
+    return;
+  }
+  ctrl.postMessage('status');
+}
+if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+  navigator.serviceWorker.register('./sw.js').catch((e) => console.warn('SW 註冊失敗', e));
+  navigator.serviceWorker.addEventListener('message', (e) => {
+    if (e.data?.type !== 'status') return;
+    const ready = e.data.cached >= e.data.total;
+    offlineInfo.textContent = ready ? `✅ 已可離線使用（${e.data.total} 個檔案）` : `📥 離線資料下載中…（${e.data.cached}/${e.data.total}）`;
+  });
+  navigator.serviceWorker.addEventListener('controllerchange', updateOfflineInfo);
+}
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  installEvent = e;
+  installBtn.hidden = false;
+});
+installBtn.addEventListener('click', async () => {
+  if (!installEvent) return;
+  installEvent.prompt();
+  await installEvent.userChoice;
+  installEvent = null;
+  installBtn.hidden = true;
+});
+const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+const standalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+installHint.textContent = standalone
+  ? '已經是安裝版了 👍'
+  : isIOS
+    ? 'iPhone：用 Safari 開啟 → 分享按鈕 → 「加入主畫面」。'
+    : '安裝後可以像 App 一樣從桌面打開，沒網路也能查句子（語音要看裝置是否內建日文語音）。';
+document.getElementById('settingsBtn').addEventListener('click', updateOfflineInfo);
 
 route();

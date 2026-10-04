@@ -2,12 +2,14 @@ import { GOJUON, DAKUTEN, YOON, toKatakana, toHiragana, kanaInfo, kanaToRomaji }
 import { strength } from '../progress.js';
 import { speak } from '../speech.js';
 import { esc, sayBtn } from '../util.js';
+import { mountStrokes } from '../strokes.js';
 
 const VOWELS = ['a', 'i', 'u', 'e', 'o'];
 
 export function render(root) {
   let script = location.hash.includes('kata') ? 'kata' : 'hira';
   let selected = null;
+  let strokeCtl = null;
 
   const conv = (k) => (script === 'kata' ? toKatakana(k) : k);
 
@@ -41,7 +43,12 @@ export function render(root) {
           ${info.origin ? `<p>🈶 字源：從漢字「<b class="origin">${info.origin}</b>」演變而來</p>` : ''}
           ${word ? `<p>📘 例字：<b class="jp">${esc(word)}</b> ${isWord ? `<span class="romaji">${kanaToRomaji(word)}</span> ${sayBtn(word)}` : ''}<br/><span class="muted">${esc(meaning)}</span></p>` : ''}
           ${info.confusable ? `<p class="warn">⚠ 容易跟「${info.confusable}」搞混</p>` : ''}
-          <p class="muted small">點左邊的卡片可以翻面</p>
+          <p class="muted small">點卡片可以翻面看拼音和字源</p>
+        </div>
+        <div class="stroke-wrap">
+          <div class="stroke-head"><b>✍️ 筆順</b><button class="btn small ghost" id="replayStroke">↻ 再播一次</button></div>
+          <div class="stroke-box" id="strokeBox"><p class="muted small">載入中…</p></div>
+          <p class="muted tiny">紅色數字是筆畫順序。筆順資料來自 <a href="https://kanjivg.tagaini.net" target="_blank" rel="noopener">KanjiVG</a>（CC BY-SA 3.0）</p>
         </div>
       </div>`;
   }
@@ -109,6 +116,12 @@ export function render(root) {
     root.querySelector(`.kcell[data-k="${CSS.escape(k)}"]`)?.classList.add('sel');
     const d = root.querySelector('#detail');
     d.innerHTML = detail(k, r);
+    strokeCtl?.stop();
+    strokeCtl = null;
+    mountStrokes(d.querySelector('#strokeBox'), k).then((c) => {
+      if (selected?.k === k) strokeCtl = c;
+      else c.stop();
+    });
     d.classList.remove('pop');
     void d.offsetWidth;
     d.classList.add('pop');
@@ -130,7 +143,9 @@ export function render(root) {
     if (c) return showDetail(c.dataset.k, c.dataset.r);
     const flip = e.target.closest('#flip');
     if (flip) flip.classList.toggle('flipped');
+    if (e.target.closest('#replayStroke')) strokeCtl?.replay();
   });
 
   draw();
+  return () => strokeCtl?.stop();
 }

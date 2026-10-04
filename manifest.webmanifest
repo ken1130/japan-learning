@@ -1,0 +1,17 @@
+{
+  "name": "旅日語 Tabi Nihongo",
+  "short_name": "旅日語",
+  "description": "零基礎、為旅行而學的日文：五十音、旅遊會話、菜單、商店、招牌。",
+  "lang": "zh-Hant",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#faf6ef",
+  "theme_color": "#c8402f",
+  "icons": [
+    { "src": "assets/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "assets/icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "assets/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

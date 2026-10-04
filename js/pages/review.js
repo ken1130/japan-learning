@@ -173,7 +173,11 @@ export function render(root) {
   }
 
   function makeQ(item) {
-    const pool = allItems().filter((x) => x.type === item.type && (item.type !== 'kana' || x.script === item.script));
+    const pool = allItems().filter((x) => x.type === item.type && (item.type !== 'kana' || x.script === item.script) && !!x.station === !!item.station);
+    if (item.station) {
+      // 車站名漢字看得懂，重點是讀音
+      return { item, kind: 'word', prompt: `<div class="q-big jp">${esc(item.show)}</div><p class="q-label">這個車站怎麼唸？</p>`, opts: choices(item, pool, 4, (x) => x.sub), label: (o) => `<span class="jp">${esc(o.sub)}</span>`, same: (o) => o.sub === item.sub };
+    }
     if (item.type === 'kana') {
       return { item, kind: 'kana', prompt: `<div class="q-big jp">${esc(item.show)}</div><p class="q-label">這個假名怎麼唸？</p>`, opts: choices(item, pool, 4, (x) => x.zh), label: (o) => esc(o.zh), same: (o) => o.zh === item.zh };
     }
