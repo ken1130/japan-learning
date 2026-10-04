@@ -65,9 +65,11 @@ export function render(root) {
 
       <div class="tabs">${BOARDS.map((x) => `<button data-board="${x.id}" class="${x.id === boardId ? 'on' : ''}">${esc(x.title)}</button>`).join('')}</div>
       <p class="tip">💡 ${esc(b.tip)}</p>
-      <div class="menu-layout">
-        <div>${boardHtml(b)}</div>
-        <aside class="card menu-detail" id="wordDetail"><p class="muted">👈 點看板上有底線的字</p></aside>
+      <div class="board-layout">
+        ${boardHtml(b)}
+        <aside class="card word-detail" id="wordDetail" aria-live="polite">
+          <p class="wd-hint"><span class="wd-hand">👆</span><span>點看板上<b>有虛線底線</b>的字，這裡會顯示讀音、意思和發音。</span></p>
+        </aside>
       </div>
 
       <section class="grid-2">

@@ -555,6 +555,7 @@ body.hide-romaji .romaji { visibility: hidden; }
 .phrase-opts .opt { font-size: 1.05rem; }
 input[type='search'] { -webkit-appearance: none; appearance: none; }
 :focus-visible { outline: 3px solid var(--indigo); outline-offset: 2px; }
+h1[tabindex='-1']:focus { outline: none; }
 
 /* 數字頁 */
 .num-compare { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin: 10px 0; }
@@ -685,13 +686,22 @@ input[type='search'] { -webkit-appearance: none; appearance: none; }
 .board-line { font-size: clamp(1.05rem, 3.6vw, 1.35rem); line-height: 1.9; }
 .seg-word { font: inherit; color: inherit; background: none; border: 0; padding: 0 2px; cursor: pointer; border-bottom: 2px dashed currentColor; border-radius: 3px; }
 .seg-word:hover, .seg-word.sel { background: rgb(200 64 47 / 0.18); }
-.board-tag { background: #fff; color: #222; border: 1px solid #ddd; border-top: 10px solid #c8102e; max-width: 420px; }
+.board-layout { display: grid; grid-template-columns: minmax(0, 480px) minmax(240px, 340px); gap: 16px; align-items: start; margin-bottom: 24px; }
+.word-detail { position: sticky; top: calc(var(--topbar-h) + 12px); padding: 16px 18px; }
+.wd-hint { margin: 0; color: var(--muted); display: flex; gap: 10px; align-items: center; }
+.wd-hand { font-size: 1.6rem; }
+@media (max-width: 760px) {
+  .board-layout { grid-template-columns: minmax(0, 1fr); }
+  .word-detail { position: static; }
+  .hide-sm { display: none; }
+}
+.board-tag { background: #fff; color: #222; border: 1px solid #ddd; border-top: 10px solid #c8102e; }
 .board-floor { background: #2d2f36; color: #f2f2f2; font-family: var(--font-jp); }
 .board-floor .board-line { border-bottom: 1px solid rgb(255 255 255 / 0.15); }
 .board-sale { background: #c8102e; color: #fff; text-align: center; }
 .board-sale .board-line:first-of-type { font-size: clamp(1.4rem, 5vw, 2rem); font-weight: 900; }
 .board-screen { background: #0f3b57; color: #e8f4ff; border: 8px solid #222; border-radius: 18px; }
-.board-goods { background: #f3efe6; color: #4a3f35; border: 1px solid #d8cfbf; max-width: 420px; }
+.board-goods { background: #f3efe6; color: #4a3f35; border: 1px solid #d8cfbf; }
 
 /* 弱點複習 */
 .warn-stat b { color: var(--red); }
