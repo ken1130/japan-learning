@@ -1,0 +1,196 @@
+// 入口：hash 路由 + 選單（側欄／抽屜／底部分頁）+ 全域設定 + 發音按鈕
+import { speak, speechSupported, voiceName } from './speech.js';
+import { getSetting, setSetting } from './progress.js';
+
+const ROUTES = {
+  '': { name: '首頁', load: () => import('./pages/home.js') },
+  start: { name: '新手入門', load: () => import('./pages/start.js') },
+  kana: { name: '五十音', load: () => import('./pages/kana.js') },
+  quiz: { name: '假名測驗', load: () => import('./pages/quiz.js') },
+  rain: { name: '假名雨', load: () => import('./pages/rain.js') },
+  phrases: { name: '旅遊會話', load: () => import('./pages/phrases.js') },
+  dialogue: { name: '情境對話', load: () => import('./pages/dialogue.js') },
+  listen: { name: '聽力練習', load: () => import('./pages/listen.js') },
+  numbers: { name: '數字價格', load: () => import('./pages/numbers.js') },
+  menu: { name: '看懂菜單', load: () => import('./pages/menu.js') },
+  shop: { name: '看懂商店', load: () => import('./pages/shop.js') },
+  signs: { name: '街頭招牌', load: () => import('./pages/signs.js') },
+  review: { name: '弱點複習', load: () => import('./pages/review.js') },
+};
+
+const app = document.getElementById('app');
+let cleanup = null;
+let navToken = 0;
+
+async function route() {
+  const raw = location.hash.replace(/^#\/?/, '').split(/[/?]/)[0];
+  const name = ROUTES[raw] ? raw : '';
+  const r = ROUTES[name];
+  const token = ++navToken;
+
+  if (cleanup) {
+    try {
+      cleanup();
+    } catch (e) {
+      console.error(e);
+    }
+    cleanup = null;
+  }
+  window.speechSynthesis?.cancel();
+  closeDrawer();
+
+  document.querySelectorAll('[data-route]').forEach((a) => {
+    const on = a.dataset.route === name;
+    a.classList.toggle('active', on);
+    if (on) a.setAttribute('aria-current', 'page');
+    else a.removeAttribute('aria-current');
+  });
+  document.getElementById('pageName').textContent = name ? r.name : '';
+  document.title = name ? `${r.name}｜旅日語 Tabi Nihongo` : '旅日語 Tabi Nihongo';
+  app.innerHTML = '<div class="loading">読み込み中…</div>';
+  window.scrollTo(0, 0);
+
+  let mod;
+  try {
+    mod = await r.load();
+  } catch (e) {
+    console.error(e);
+    if (token === navToken) app.innerHTML = '<div class="card center"><h2>載入失敗 😢</h2><p>請檢查網路連線後重新整理頁面。</p></div>';
+    return;
+  }
+  if (token !== navToken) return;
+  // 每一頁都給一個全新的容器：頁面掛在 root 上的事件監聽器會跟著舊容器一起丟掉，
+  // 不會累積到下一頁（否則在 A 頁點按鈕，B 頁的舊監聽器也會被觸發）
+  const view = document.createElement('div');
+  view.className = 'view';
+  app.replaceChildren(view);
+  app.classList.remove('page-enter');
+  void app.offsetWidth;
+  app.classList.add('page-enter');
+  const result = await mod.render(view);
+  if (token !== navToken) {
+    // 渲染途中又換頁了，立刻清掉
+    if (typeof result === 'function') result();
+    return;
+  }
+  cleanup = typeof result === 'function' ? result : null;
+  updateBadge();
+  // 換頁後把焦點移到新頁標題，鍵盤／螢幕報讀使用者才知道頁面換了
+  const h1 = view.querySelector('h1');
+  if (h1 && document.activeElement && (document.activeElement === document.body || !document.activeElement.isConnected || sidebar.contains(document.activeElement))) {
+    h1.tabIndex = -1;
+    h1.focus({ preventScroll: true });
+  }
+}
+
+window.addEventListener('hashchange', route);
+
+// 弱點數量顯示在選單上
+async function updateBadge() {
+  const { weakIds } = await import('./data/registry.js');
+  const n = weakIds().length;
+  const b = document.getElementById('weakBadge');
+  b.hidden = !n;
+  b.textContent = n > 99 ? '99+' : n;
+}
+
+// 任何帶 data-say 的元素被點擊就唸出來
+document.addEventListener('click', (e) => {
+  const el = e.target.closest('[data-say]');
+  if (!el) return;
+  e.stopPropagation();
+  el.classList.add('speaking');
+  speak(el.dataset.say).then(() => el.classList.remove('speaking'));
+});
+
+// ---- 手機抽屜選單 ----
+const sidebar = document.getElementById('sidebar');
+const scrim = document.getElementById('scrim');
+const menuBtn = document.getElementById('menuBtn');
+
+// 抽屜模式（≤1100px）時，關著的側欄要設 inert，鍵盤 Tab 才不會跑進看不到的連結
+const drawerMQ = window.matchMedia('(max-width: 1100px)');
+function syncInert() {
+  sidebar.inert = drawerMQ.matches && !document.body.classList.contains('drawer-open');
+}
+drawerMQ.addEventListener('change', syncInert);
+syncInert();
+
+function openDrawer() {
+  document.body.classList.add('drawer-open');
+  syncInert();
+  scrim.hidden = false;
+  menuBtn.setAttribute('aria-expanded', 'true');
+  document.getElementById('tabMore').setAttribute('aria-expanded', 'true');
+  sidebar.querySelector('a.active, a')?.focus({ preventScroll: true });
+}
+function closeDrawer({ returnFocus = false } = {}) {
+  if (!document.body.classList.contains('drawer-open')) return;
+  const hadFocus = sidebar.contains(document.activeElement);
+  document.body.classList.remove('drawer-open');
+  syncInert();
+  scrim.hidden = true;
+  menuBtn.setAttribute('aria-expanded', 'false');
+  document.getElementById('tabMore').setAttribute('aria-expanded', 'false');
+  if (returnFocus && hadFocus) menuBtn.focus();
+}
+menuBtn.addEventListener('click', () => (document.body.classList.contains('drawer-open') ? closeDrawer() : openDrawer()));
+document.getElementById('tabMore').addEventListener('click', openDrawer);
+scrim.addEventListener('click', () => closeDrawer({ returnFocus: true }));
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    closeDrawer({ returnFocus: true });
+    pop.hidden = true;
+  }
+});
+
+// ---- 設定面板 ----
+const pop = document.getElementById('settingsPop');
+const rateInput = document.getElementById('rateInput');
+const rateOut = document.getElementById('rateOut');
+const romajiInput = document.getElementById('romajiInput');
+const themeInput = document.getElementById('themeInput');
+
+function applyTheme() {
+  const t = getSetting('theme');
+  if (t === 'auto') document.documentElement.removeAttribute('data-theme');
+  else document.documentElement.dataset.theme = t;
+}
+
+function applyRomaji() {
+  document.body.classList.toggle('hide-romaji', !getSetting('romaji'));
+}
+
+rateInput.value = getSetting('rate');
+rateOut.textContent = Number(getSetting('rate')).toFixed(1);
+romajiInput.checked = getSetting('romaji');
+themeInput.value = getSetting('theme');
+applyTheme();
+applyRomaji();
+
+document.getElementById('settingsBtn').addEventListener('click', (e) => {
+  e.stopPropagation();
+  pop.hidden = !pop.hidden;
+  const info = document.getElementById('voiceInfo');
+  if (!speechSupported()) info.textContent = '⚠ 這個瀏覽器不支援語音，建議用 Edge 或 Chrome。';
+  else info.textContent = voiceName() ? `目前語音：${voiceName()}` : '⚠ 找不到日文語音。Windows 可到「設定 → 時間與語言 → 語音」新增日文語音，或改用 Edge。';
+});
+document.addEventListener('click', (e) => {
+  if (!pop.hidden && !pop.contains(e.target)) pop.hidden = true;
+});
+rateInput.addEventListener('input', () => {
+  const v = Number(rateInput.value);
+  rateOut.textContent = v.toFixed(1);
+  setSetting('rate', v);
+});
+romajiInput.addEventListener('change', () => {
+  setSetting('romaji', romajiInput.checked);
+  applyRomaji();
+});
+themeInput.addEventListener('change', () => {
+  setSetting('theme', themeInput.value);
+  applyTheme();
+});
+document.getElementById('testVoice').addEventListener('click', () => speak('こんにちは'));
+
+route();

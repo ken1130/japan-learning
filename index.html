@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>旅日語 Tabi Nihongo</title>
+  <meta name="description" content="零基礎、為旅行而學的日文網站：假名、旅遊會話、菜單與招牌。" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='46' fill='%23c8402f'/><text x='50' y='68' font-size='52' text-anchor='middle' fill='white' font-family='sans-serif'>あ</text></svg>" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&family=Noto+Sans+TC:wght@400;700&family=Noto+Serif+JP:wght@700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+  <script type="importmap">
+    { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js" } }
+  </script>
+</head>
+<body>
+  <header class="topbar">
+    <button class="icon-btn menu-btn" id="menuBtn" aria-label="開啟選單" aria-controls="sidebar" aria-expanded="false">☰</button>
+    <a class="brand" href="#/">
+      <span class="brand-mark">旅</span>
+      <span class="brand-text">旅日語<small>Tabi Nihongo</small></span>
+    </a>
+    <span class="page-name" id="pageName"></span>
+    <button class="icon-btn" id="settingsBtn" aria-label="設定" title="設定">⚙</button>
+  </header>
+
+  <aside class="sidebar" id="sidebar" aria-label="主選單">
+    <nav class="nav" id="nav">
+      <div class="nav-group">
+        <span class="nav-title">開始</span>
+        <a href="#/" data-route=""><i>🏠</i>首頁</a>
+        <a href="#/start" data-route="start"><i>📖</i>新手入門</a>
+      </div>
+      <div class="nav-group">
+        <span class="nav-title">假名</span>
+        <a href="#/kana" data-route="kana"><i>あ</i>五十音</a>
+        <a href="#/quiz" data-route="quiz"><i>📝</i>假名測驗</a>
+        <a href="#/rain" data-route="rain"><i>🌧️</i>假名雨遊戲</a>
+      </div>
+      <div class="nav-group">
+        <span class="nav-title">說與聽</span>
+        <a href="#/phrases" data-route="phrases"><i>💬</i>旅遊會話</a>
+        <a href="#/dialogue" data-route="dialogue"><i>🎭</i>情境對話</a>
+        <a href="#/listen" data-route="listen"><i>🎧</i>聽力練習</a>
+        <a href="#/numbers" data-route="numbers"><i>💴</i>數字價格</a>
+      </div>
+      <div class="nav-group">
+        <span class="nav-title">看懂日文</span>
+        <a href="#/menu" data-route="menu"><i>🍜</i>看懂菜單</a>
+        <a href="#/shop" data-route="shop"><i>👕</i>看懂商店</a>
+        <a href="#/signs" data-route="signs"><i>🏮</i>街頭招牌</a>
+      </div>
+      <div class="nav-group">
+        <span class="nav-title">我的</span>
+        <a href="#/review" data-route="review"><i>📊</i>弱點複習<b class="nav-badge" id="weakBadge" hidden></b></a>
+      </div>
+    </nav>
+  </aside>
+  <div class="scrim" id="scrim" hidden></div>
+
+  <nav class="tabbar" aria-label="快速選單">
+    <a href="#/" data-route=""><i>🏠</i>首頁</a>
+    <a href="#/kana" data-route="kana"><i>あ</i>五十音</a>
+    <a href="#/phrases" data-route="phrases"><i>💬</i>會話</a>
+    <a href="#/review" data-route="review"><i>📊</i>複習</a>
+    <button id="tabMore" aria-label="更多功能" aria-controls="sidebar" aria-expanded="false"><i>☰</i>更多</button>
+  </nav>
+
+  <div class="settings-pop" id="settingsPop" hidden>
+    <label>語音速度 <output id="rateOut">0.9</output>
+      <input type="range" id="rateInput" min="0.5" max="1.3" step="0.1" />
+    </label>
+    <label class="check"><input type="checkbox" id="romajiInput" /> 顯示羅馬拼音</label>
+    <label>主題
+      <select id="themeInput">
+        <option value="auto">跟隨系統</option>
+        <option value="light">淺色</option>
+        <option value="dark">深色</option>
+      </select>
+    </label>
+    <p class="muted small" id="voiceInfo"></p>
+    <button class="btn ghost small" id="testVoice">試聽「こんにちは」</button>
+  </div>
+
+  <main id="app" class="app"></main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
