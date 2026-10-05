@@ -2,12 +2,17 @@ import * as THREE from 'three';
 
 export const JP_FONT = '"Noto Sans JP", "Hiragino Sans", "Yu Gothic", "Meiryo", sans-serif';
 
-/** 等日文字型載入，避免貼圖畫出來是預設字型 */
-export async function fontsReady() {
+/**
+ * 等日文字型載入，避免貼圖畫出來是預設字型。
+ * Google Fonts 會把字型切成很多小包（unicode-range），只會下載用到的字，
+ * 所以要把「貼圖上會出現的所有文字」傳進來，例如 fontsReady('お弁当・パン・お菓子')
+ */
+export async function fontsReady(text = '') {
+  const sample = 'あア漢' + text;
   try {
     await Promise.race([
-      Promise.all([document.fonts.load(`900 64px "Noto Sans JP"`, 'あア漢'), document.fonts.load(`700 64px "Noto Sans JP"`, 'あア漢')]),
-      new Promise((r) => setTimeout(r, 2500)),
+      Promise.all([document.fonts.load(`900 64px "Noto Sans JP"`, sample), document.fonts.load(`700 64px "Noto Sans JP"`, sample)]),
+      new Promise((r) => setTimeout(r, 3000)),
     ]);
   } catch {
     /* 字型載入失敗就用系統字型 */
@@ -89,17 +94,52 @@ export function disposeScene(scene) {
   });
 }
 
-/** 讓 renderer 跟著容器大小變化 */
-export function autoResize(container, renderer, camera) {
+/** 觸控裝置（手機、平板） */
+export function isTouchDevice() {
+  return window.matchMedia('(pointer: coarse)').matches;
+}
+
+/**
+ * 建立 renderer：手機把像素比上限降到 1.5（3 倍螢幕畫 2 倍像素很吃效能，肉眼差別不大）
+ */
+export function makeRenderer(container, { alpha = false } = {}) {
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha, powerPreference: 'high-performance' });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, isTouchDevice() ? 1.5 : 2));
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  container.appendChild(renderer.domElement);
+  return renderer;
+}
+
+/** 讓 renderer 跟著容器大小變化；大小沒變就不重設（避免手機網址列伸縮時一直重算） */
+export function autoResize(container, renderer, camera, onResize) {
+  let lastW = 0;
+  let lastH = 0;
   const fit = () => {
     const w = container.clientWidth || 1;
     const h = container.clientHeight || 1;
+    if (w === lastW && h === lastH) return;
+    lastW = w;
+    lastH = h;
     renderer.setSize(w, h, false);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
+    onResize?.();
   };
   fit();
   const ro = new ResizeObserver(fit);
   ro.observe(container);
   return () => ro.disconnect();
+}
+
+/** 追蹤元素是否在畫面上；捲出畫面時場景可以暫停繪製，省電又不卡 */
+export function watchVisible(el) {
+  const state = { visible: true, stop() {} };
+  if (!('IntersectionObserver' in window)) return state;
+  const io = new IntersectionObserver(([entry]) => {
+    state.visible = entry.isIntersecting;
+    state.onChange?.(state.visible);
+  });
+  io.observe(el);
+  state.stop = () => io.disconnect();
+  return state;
 }

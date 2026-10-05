@@ -1,21 +1,18 @@
-// 3D 日本街景：兩排建築上掛著招牌，拖曳轉頭、滾輪/按鈕前進後退，點招牌看意思
+// 3D 日本街景：兩排建築上掛著招牌。左右拖曳轉頭、按鈕／滾輪前進後退、「下一個招牌」自動導覽，點招牌看意思
+// 手機：上下滑動交給瀏覽器捲動頁面（touch-action: pan-y），不會被 3D 畫面卡住
 import * as THREE from 'three';
-import { textTexture, fontsReady, disposeScene, autoResize } from './textTexture.js';
+import { textTexture, fontsReady, disposeScene, autoResize, makeRenderer, watchVisible } from './textTexture.js';
 
 export async function createSignStreet(container, { signs, onPick }) {
-  await fontsReady();
+  await fontsReady(signs.map((s) => s.jp).join(''));
 
-  const renderer = new THREE.WebGLRenderer({ antialias: true });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  renderer.outputColorSpace = THREE.SRGBColorSpace;
-  container.appendChild(renderer.domElement);
+  const renderer = makeRenderer(container);
 
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x1b2140);
   scene.fog = new THREE.Fog(0x1b2140, 10, 34);
 
   const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 100);
-  const stopResize = autoResize(container, renderer, camera);
 
   scene.add(new THREE.HemisphereLight(0x9fb4ff, 0x2a1f2f, 1.2));
   const moon = new THREE.DirectionalLight(0xffe7c4, 0.9);
@@ -95,12 +92,16 @@ export async function createSignStreet(container, { signs, onPick }) {
   // ---- 相機控制 ----
   const maxZ = 4;
   const minZ = -(count - 2) * SPACING;
-  const view = { z: maxZ, targetZ: maxZ, yaw: 0, pitch: -0.05 };
+  const PITCH = -0.05;
+  const view = { z: maxZ, targetZ: maxZ, yaw: 0, tYaw: 0 };
+  let dirty = true; // 需要重畫
   let dragging = false;
   let dragMoved = 0;
   let last = { x: 0, y: 0 };
+  let focusIdx = -1;
   const el = renderer.domElement;
-  el.style.touchAction = 'none';
+  // 只攔截水平拖曳；垂直滑動讓頁面正常捲動
+  el.style.touchAction = 'pan-y';
 
   const ray = new THREE.Raycaster();
   let hovered = null;
@@ -108,78 +109,132 @@ export async function createSignStreet(container, { signs, onPick }) {
     const r = el.getBoundingClientRect();
     return new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
   };
+  const hitBoard = (e) => {
+    ray.setFromCamera(toNDC(e), camera);
+    return ray.intersectObjects(boards)[0]?.object || null;
+  };
+
+  function move(dz) {
+    view.targetZ = THREE.MathUtils.clamp(view.targetZ + dz, minZ, maxZ);
+    dirty = true;
+  }
+  function turn(d) {
+    view.tYaw = THREE.MathUtils.clamp(view.tYaw + d, -1.3, 1.3);
+    dirty = true;
+  }
+  /** 走到第 i 個招牌前面並轉頭看它 */
+  function focus(i) {
+    focusIdx = (i + boards.length) % boards.length;
+    const b = boards[focusIdx];
+    const d = 2.6; // 站在招牌前方多遠
+    view.targetZ = THREE.MathUtils.clamp(b.position.z + d, minZ, maxZ);
+    view.tYaw = Math.atan2(-b.position.x, view.targetZ - b.position.z);
+    b.userData.glow = 1;
+    dirty = true;
+    onPick?.(b.userData.sign);
+  }
 
   const onDown = (e) => {
     dragging = true;
     dragMoved = 0;
     last = { x: e.clientX, y: e.clientY };
-    el.setPointerCapture(e.pointerId);
   };
   const onMove = (e) => {
     if (dragging) {
       const dx = e.clientX - last.x;
       const dy = e.clientY - last.y;
       dragMoved += Math.abs(dx) + Math.abs(dy);
-      view.yaw = THREE.MathUtils.clamp(view.yaw + dx * 0.005, -1.2, 1.2);
-      view.pitch = THREE.MathUtils.clamp(view.pitch + dy * 0.003, -0.4, 0.4);
+      turn(dx * 0.005);
+      // 滑鼠上下拖曳＝前進後退（手機的上下滑動是捲動頁面）
+      if (e.pointerType === 'mouse') move(dy * 0.03);
       last = { x: e.clientX, y: e.clientY };
     }
-    ray.setFromCamera(toNDC(e), camera);
-    hovered = ray.intersectObjects(boards)[0]?.object || null;
-    el.style.cursor = hovered ? 'pointer' : dragging ? 'grabbing' : 'grab';
+    if (e.pointerType === 'mouse') {
+      const h = hitBoard(e);
+      if (h !== hovered) {
+        hovered = h;
+        dirty = true;
+      }
+      el.style.cursor = hovered ? 'pointer' : dragging ? 'grabbing' : 'grab';
+    }
   };
   const onUp = (e) => {
-    dragging = false;
-    if (dragMoved < 6) {
-      ray.setFromCamera(toNDC(e), camera);
-      const hit = ray.intersectObjects(boards)[0]?.object;
+    if (dragging && dragMoved < 8) {
+      const hit = hitBoard(e);
       if (hit) {
         hit.userData.glow = 1;
+        focusIdx = boards.indexOf(hit);
+        dirty = true;
         onPick?.(hit.userData.sign);
       }
     }
+    dragging = false;
+  };
+  const onCancel = () => {
+    // 瀏覽器接手捲動頁面時會送 pointercancel
+    dragging = false;
   };
   const onWheel = (e) => {
-    e.preventDefault();
+    // 滾輪＝前進後退；走到街道盡頭時不攔截，讓頁面可以繼續捲動
+    const before = view.targetZ;
     move(e.deltaY > 0 ? -1.5 : 1.5);
+    if (view.targetZ !== before) e.preventDefault();
   };
   el.addEventListener('pointerdown', onDown);
   el.addEventListener('pointermove', onMove);
   el.addEventListener('pointerup', onUp);
+  el.addEventListener('pointercancel', onCancel);
+  el.addEventListener('pointerleave', onCancel);
   el.addEventListener('wheel', onWheel, { passive: false });
 
-  function move(dz) {
-    view.targetZ = THREE.MathUtils.clamp(view.targetZ + dz, minZ, maxZ);
-  }
-
-  const clock = new THREE.Clock();
+  const vis = watchVisible(container);
+  vis.onChange = (v) => v && (dirty = true);
+  const stopResize = autoResize(container, renderer, camera, () => (dirty = true));
+  const dir = new THREE.Vector3();
   let raf = 0;
   function tick() {
-    const t = clock.getElapsedTime();
-    view.z += (view.targetZ - view.z) * 0.08;
-    camera.position.set(0, 1.7 + Math.sin(t * 2) * 0.01, view.z);
-    const dir = new THREE.Vector3(Math.sin(-view.yaw), Math.sin(view.pitch), -Math.cos(view.yaw));
-    camera.lookAt(camera.position.clone().add(dir));
-
+    raf = requestAnimationFrame(tick);
+    const dz = view.targetZ - view.z;
+    const dy = view.tYaw - view.yaw;
+    if (Math.abs(dz) > 0.001 || Math.abs(dy) > 0.0005) {
+      view.z += dz * 0.1;
+      view.yaw += dy * 0.15;
+      dirty = true;
+    }
     for (const b of boards) {
       const d = b.userData;
-      d.glow = Math.max(0, d.glow - 0.02);
+      if (d.glow > 0) {
+        d.glow = Math.max(0, d.glow - 0.02);
+        dirty = true;
+      }
       b.material.emissiveIntensity = 0.35 + (b === hovered ? 0.35 : 0) + d.glow * 0.6;
     }
+    // 沒有任何變化、或捲出畫面時就不重畫（手機上最省電、最順）
+    if (!dirty || !vis.visible) return;
+    dirty = false;
+    camera.position.set(0, 1.7, view.z);
+    dir.set(Math.sin(-view.yaw), Math.sin(PITCH), -Math.cos(view.yaw));
+    camera.lookAt(camera.position.x + dir.x, camera.position.y + dir.y, camera.position.z + dir.z);
     renderer.render(scene, camera);
-    raf = requestAnimationFrame(tick);
   }
   tick();
 
   return {
     forward: () => move(-SPACING),
     back: () => move(SPACING),
+    turnLeft: () => turn(0.5),
+    turnRight: () => turn(-0.5),
+    next: () => focus(focusIdx + 1),
+    prev: () => focus(focusIdx < 0 ? boards.length - 1 : focusIdx - 1),
     dispose() {
       cancelAnimationFrame(raf);
       stopResize();
+      vis.stop();
       el.removeEventListener('pointerdown', onDown);
       el.removeEventListener('pointermove', onMove);
       el.removeEventListener('pointerup', onUp);
+      el.removeEventListener('pointercancel', onCancel);
+      el.removeEventListener('pointerleave', onCancel);
       el.removeEventListener('wheel', onWheel);
       disposeScene(scene);
       renderer.dispose();
@@ -189,6 +244,7 @@ export async function createSignStreet(container, { signs, onPick }) {
 }
 
 function makeWindowTexture() {
+
   const c = document.createElement('canvas');
   c.width = 128;
   c.height = 256;

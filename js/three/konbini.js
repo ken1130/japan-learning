@@ -1,6 +1,7 @@
-// 3D 便利商店：站在店中間，拖曳轉頭看貨架，點商品看名稱、讀音和價格
+// 3D 便利商店：站在店中間，左右拖曳轉頭看貨架，點商品看名稱、讀音和價格
+// 手機：上下滑動交給瀏覽器捲動頁面（touch-action: pan-y），不會把視角往下拉
 import * as THREE from 'three';
-import { textTexture, fontsReady, disposeScene, autoResize, JP_FONT } from './textTexture.js';
+import { textTexture, fontsReady, disposeScene, autoResize, JP_FONT, makeRenderer, watchVisible } from './textTexture.js';
 
 // 每個貨架的位置：x/z 是中心，ry 是面向，w 是寬度，levels 是層數
 const UNITS = {
@@ -63,17 +64,13 @@ function floorTexture() {
 }
 
 export async function createKonbini(container, { items, onPick, reducedMotion = false }) {
-  await fontsReady();
+  await fontsReady(Object.values(UNITS).map((u) => u.label).join('') + items.map((it) => it.jp).join(''));
 
-  const renderer = new THREE.WebGLRenderer({ antialias: true });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  renderer.outputColorSpace = THREE.SRGBColorSpace;
-  container.appendChild(renderer.domElement);
+  const renderer = makeRenderer(container);
 
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0xf4f2ee);
   const camera = new THREE.PerspectiveCamera(62, 1, 0.1, 50);
-  const stopResize = autoResize(container, renderer, camera);
 
   scene.add(new THREE.HemisphereLight(0xffffff, 0xd8d2c6, 1.9));
   const dl = new THREE.DirectionalLight(0xffffff, 0.8);
@@ -175,12 +172,14 @@ export async function createKonbini(container, { items, onPick, reducedMotion = 
   }
 
   // ---- 相機控制：站在店中間轉頭 ----
-  const view = { yaw: 0, pitch: -0.12, tYaw: 0 };
+  const PITCH = -0.12;
+  const view = { yaw: 0, tYaw: 0 };
+  let dirty = true;
   const el = renderer.domElement;
-  el.style.touchAction = 'none';
+  el.style.touchAction = 'pan-y';
   let dragging = false;
   let moved = 0;
-  let last = { x: 0, y: 0 };
+  let lastX = 0;
   const ray = new THREE.Raycaster();
   let hovered = null;
   const toNDC = (e) => {
@@ -191,73 +190,105 @@ export async function createKonbini(container, { items, onPick, reducedMotion = 
     ray.setFromCamera(toNDC(e), camera);
     return ray.intersectObjects(products)[0]?.object || null;
   };
+  const turnTo = (y) => {
+    view.tYaw = THREE.MathUtils.clamp(y, -1.7, 1.7);
+    dirty = true;
+  };
   const onDown = (e) => {
     dragging = true;
     moved = 0;
-    last = { x: e.clientX, y: e.clientY };
-    el.setPointerCapture(e.pointerId);
+    lastX = e.clientX;
   };
   const onMove = (e) => {
     if (dragging) {
-      const dx = e.clientX - last.x;
-      const dy = e.clientY - last.y;
-      moved += Math.abs(dx) + Math.abs(dy);
-      view.tYaw = THREE.MathUtils.clamp(view.tYaw + dx * 0.006, -1.7, 1.7);
-      view.pitch = THREE.MathUtils.clamp(view.pitch + dy * 0.003, -0.5, 0.3);
-      last = { x: e.clientX, y: e.clientY };
+      const dx = e.clientX - lastX;
+      moved += Math.abs(dx);
+      turnTo(view.tYaw + dx * 0.006);
+      lastX = e.clientX;
     }
-    hovered = hit(e);
-    el.style.cursor = hovered ? 'pointer' : dragging ? 'grabbing' : 'grab';
+    if (e.pointerType === 'mouse') {
+      const h = hit(e);
+      if (h !== hovered) {
+        hovered = h;
+        dirty = true;
+      }
+      el.style.cursor = hovered ? 'pointer' : dragging ? 'grabbing' : 'grab';
+    }
   };
   const onUp = (e) => {
-    dragging = false;
-    if (moved < 6) {
+    if (dragging && moved < 8) {
       const h = hit(e);
       if (h) {
         h.userData.pop = 1;
+        dirty = true;
         onPick?.(h.userData.item);
       }
+    }
+    dragging = false;
+  };
+  const onCancel = () => {
+    dragging = false;
+    if (hovered) {
+      hovered = null;
+      dirty = true;
     }
   };
   el.addEventListener('pointerdown', onDown);
   el.addEventListener('pointermove', onMove);
   el.addEventListener('pointerup', onUp);
-  el.addEventListener('pointerleave', () => (hovered = null));
+  el.addEventListener('pointercancel', onCancel);
+  el.addEventListener('pointerleave', onCancel);
 
+  const vis = watchVisible(container);
+  vis.onChange = (v) => v && (dirty = true);
+  const stopResize = autoResize(container, renderer, camera, () => (dirty = true));
+  camera.position.set(0, 1.55, 2.2);
+  const dir = new THREE.Vector3();
   let raf = 0;
   function tick() {
-    view.yaw += (view.tYaw - view.yaw) * (reducedMotion ? 1 : 0.12);
-    camera.position.set(0, 1.55, 2.2);
-    const dir = new THREE.Vector3(Math.sin(-view.yaw), Math.sin(view.pitch), -Math.cos(view.yaw));
-    camera.lookAt(camera.position.clone().add(dir));
+    raf = requestAnimationFrame(tick);
+    const dy = view.tYaw - view.yaw;
+    if (Math.abs(dy) > 0.0005) {
+      view.yaw += reducedMotion ? dy : dy * 0.15;
+      dirty = true;
+    }
     for (const p of products) {
       const d = p.userData;
-      d.pop = Math.max(0, d.pop - 0.04);
-      const target = p === hovered ? 1.12 : 1;
-      p.scale.setScalar(p.scale.x + (target + d.pop * 0.25 - p.scale.x) * 0.2);
-      p.position.y = d.baseY + d.pop * 0.12;
+      const target = (p === hovered ? 1.12 : 1) + d.pop * 0.25;
+      if (d.pop > 0 || Math.abs(p.scale.x - target) > 0.002) {
+        d.pop = Math.max(0, d.pop - 0.04);
+        p.scale.setScalar(p.scale.x + (target - p.scale.x) * 0.2);
+        p.position.y = d.baseY + d.pop * 0.12;
+        dirty = true;
+      }
       p.material[4].emissive.setHex(p === hovered ? 0x222222 : 0x000000);
     }
+    // 沒變化或不在畫面上時不重畫
+    if (!dirty || !vis.visible) return;
+    dirty = false;
+    dir.set(Math.sin(-view.yaw), Math.sin(PITCH), -Math.cos(view.yaw));
+    camera.lookAt(camera.position.x + dir.x, camera.position.y + dir.y, camera.position.z + dir.z);
     renderer.render(scene, camera);
-    raf = requestAnimationFrame(tick);
   }
   tick();
 
   return {
     /** 轉向某個貨架 */
     look(shelfId) {
-      view.tYaw = { back: 0, fridge: -1.35, goods: 1.35, counter: 1.7 }[shelfId] ?? 0;
-      view.pitch = -0.12;
+      turnTo({ back: 0, fridge: -1.35, goods: 1.35, counter: 1.7 }[shelfId] ?? 0);
     },
     turn(delta) {
-      view.tYaw = THREE.MathUtils.clamp(view.tYaw + delta, -1.7, 1.7);
+      turnTo(view.tYaw + delta);
     },
     dispose() {
       cancelAnimationFrame(raf);
       stopResize();
+      vis.stop();
       el.removeEventListener('pointerdown', onDown);
       el.removeEventListener('pointermove', onMove);
       el.removeEventListener('pointerup', onUp);
+      el.removeEventListener('pointercancel', onCancel);
+      el.removeEventListener('pointerleave', onCancel);
       disposeScene(scene);
       renderer.dispose();
       el.remove();

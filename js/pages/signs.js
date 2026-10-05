@@ -3,11 +3,12 @@ import { kanaToRomaji } from '../data/kana.js';
 import { record } from '../progress.js';
 import { speak } from '../speech.js';
 import { esc, sayBtn, choices, weightedPick } from '../util.js';
-import { webglAvailable } from '../three/textTexture.js';
+import { webglAvailable, isTouchDevice } from '../three/textTexture.js';
 
 const byJp = new Map(SIGNS.map((s) => [s.jp, s]));
 
 export async function render(root) {
+  const INFO_HINT = '<p class="muted small">點街上的招牌，或按下面的「下一個招牌 ▶」</p>';
   let cat = 'door';
   let quiz = null;
   let alive = true;
@@ -15,15 +16,21 @@ export async function render(root) {
   root.innerHTML = `
     <header class="page-head">
       <h1>街頭招牌 <small>🏮 3D 街景</small></h1>
-      <p class="lead">在夜晚的日本街道散步：拖曳轉頭、滾輪或按鈕前進，點招牌看它的意思。</p>
+      <p class="lead">在夜晚的日本街道散步，點招牌看它的意思。最簡單的方式：按 <b>「下一個招牌 ▶」</b>，會自動走到招牌前面。${isTouchDevice() ? '也可以<b>左右滑動畫面</b>轉頭。' : '也可以<b>拖曳畫面</b>轉頭、<b>滾輪</b>前進後退。'}</p>
     </header>
     <div class="street-wrap">
-      <div class="street" id="street"></div>
-      <div class="street-ctrl">
-        <button class="btn small" id="fwd">⬆ 前進</button>
-        <button class="btn small" id="bwd">⬇ 後退</button>
+      <div class="street" id="street" aria-label="3D 街景，點招牌看意思"></div>
+      <div class="street-info card" id="signInfo" aria-live="polite"></div>
+    </div>
+    <div class="scene-pad" id="streetPad">
+      <button class="btn" data-nav="prev" aria-label="上一個招牌">◀ 上一個</button>
+      <div class="pad-group" role="group" aria-label="移動">
+        <button class="pad-btn" data-nav="left" aria-label="向左轉">↶</button>
+        <button class="pad-btn" data-nav="fwd" aria-label="前進">▲</button>
+        <button class="pad-btn" data-nav="back" aria-label="後退">▼</button>
+        <button class="pad-btn" data-nav="right" aria-label="向右轉">↷</button>
       </div>
-      <div class="street-info card" id="signInfo"><p class="muted">點擊街上的招牌 👆</p></div>
+      <button class="btn primary" data-nav="next" aria-label="下一個招牌">下一個招牌 ▶</button>
     </div>
 
     <section>
@@ -39,11 +46,13 @@ export async function render(root) {
     </section>`;
 
   const info = root.querySelector('#signInfo');
+  info.innerHTML = INFO_HINT;
   const grid = root.querySelector('#signGrid');
   const quizBox = root.querySelector('#quizBox');
 
   function signDetail(s) {
     return `
+      <button class="pop-close info-close" data-close-info aria-label="關閉說明">✕</button>
       <div class="sign-plate jp">${esc(s.jp)}</div>
       <div><span class="jp">${esc(s.kana)}</span> <span class="romaji">${kanaToRomaji(s.kana)}</span> ${sayBtn(s.kana)}</div>
       <p class="zh-big">${esc(s.zh)}</p>
@@ -79,6 +88,10 @@ export async function render(root) {
       cat = sc.dataset.scat;
       root.querySelectorAll('[data-scat]').forEach((b) => b.classList.toggle('on', b === sc));
       return drawGrid();
+    }
+    if (t.closest('[data-close-info]')) {
+      info.innerHTML = INFO_HINT;
+      return;
     }
     const card = t.closest('[data-sign]');
     if (card) {
@@ -128,6 +141,7 @@ export async function render(root) {
   const holder = root.querySelector('#street');
   if (!webglAvailable()) {
     holder.innerHTML = '<p class="muted center">你的瀏覽器不支援 WebGL，請直接看下方的招牌單字表。</p>';
+    root.querySelector('#streetPad').hidden = true;
     return () => (alive = false);
   }
   const { createSignStreet } = await import('../three/signStreet.js');
@@ -140,8 +154,16 @@ export async function render(root) {
       info.innerHTML = signDetail(full);
     },
   });
-  root.querySelector('#fwd').addEventListener('click', street.forward);
-  root.querySelector('#bwd').addEventListener('click', street.back);
+  const nav = { prev: street.prev, next: street.next, fwd: street.forward, back: street.back, left: street.turnLeft, right: street.turnRight };
+  root.querySelector('#streetPad').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-nav]');
+    if (!b) return;
+    nav[b.dataset.nav]();
+    // 3D 畫面有一部分被捲出去時，把整個街景帶回畫面中
+    const wrap = root.querySelector('.street-wrap');
+    const top = wrap.getBoundingClientRect().top;
+    if (top < 56 || top > window.innerHeight * 0.4) wrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
 
   return () => {
     alive = false;

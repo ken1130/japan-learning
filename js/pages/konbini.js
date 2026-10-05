@@ -4,7 +4,7 @@ import { numberToKana } from '../data/numbers.js';
 import { record } from '../progress.js';
 import { speak } from '../speech.js';
 import { esc, sayBtn, choices, weightedPick } from '../util.js';
-import { webglAvailable } from '../three/textTexture.js';
+import { webglAvailable, isTouchDevice } from '../three/textTexture.js';
 
 export async function render(root) {
   let quiz = null;
@@ -14,14 +14,19 @@ export async function render(root) {
   root.innerHTML = `
     <header class="page-head">
       <h1>便利商店 <small>🏪 3D 逛店</small></h1>
-      <p class="lead">日本的便利商店（コンビニ）幾乎什麼都買得到。<b>拖曳畫面轉頭看貨架，點商品</b>看名稱、讀音和價格。</p>
+      <p class="lead">日本的便利商店（コンビニ）幾乎什麼都買得到。按下面的貨架按鈕（或${isTouchDevice() ? '<b>左右滑動畫面</b>' : '<b>拖曳畫面</b>'}）轉頭，<b>點商品</b>看名稱、讀音和價格。</p>
     </header>
 
     <div class="scene-wrap">
-      <div class="scene3d" id="store" aria-label="3D 便利商店，拖曳轉頭，點商品看說明"></div>
-      <div class="scene-ctrl">
+      <div class="scene3d" id="store" aria-label="3D 便利商店，左右拖曳轉頭，點商品看說明"></div>
+      <div class="scene-pop" id="scenePop" hidden aria-live="polite"></div>
+    </div>
+    <div class="scene-pad">
+      <button class="pad-btn" data-turn="0.6" aria-label="向左轉">↶</button>
+      <div class="pad-shelves">
         ${KONBINI_SHELVES.map((s) => `<button class="btn small" data-look="${s.id}">${s.icon} ${s.name}</button>`).join('')}
       </div>
+      <button class="pad-btn" data-turn="-0.6" aria-label="向右轉">↷</button>
     </div>
 
     <div class="grid-2 konbini-info">
@@ -93,6 +98,13 @@ export async function render(root) {
     const t = e.target;
     const look = t.closest('[data-look]');
     if (look) return store?.look(look.dataset.look);
+    const tn = t.closest('[data-turn]');
+    if (tn) return store?.turn(Number(tn.dataset.turn));
+    if (t.closest('#popClose')) {
+      root.querySelector('#scenePop').hidden = true;
+      return;
+    }
+    if (t.closest('#popMore')) return info.scrollIntoView({ behavior: 'smooth', block: 'start' });
     const it = t.closest('[data-item]');
     if (it) return showItem(byJp.get(it.dataset.item), true);
     if (t.closest('#startQuiz')) {
@@ -133,7 +145,7 @@ export async function render(root) {
   const holder = root.querySelector('#store');
   if (!webglAvailable()) {
     holder.innerHTML = '<p class="muted center pad">你的瀏覽器不支援 WebGL，請直接看下方的商品清單。</p>';
-    root.querySelector('.scene-ctrl').hidden = true;
+    root.querySelector('.scene-pad').hidden = true;
     return () => (alive = false);
   }
   const { createKonbini } = await import('../three/konbini.js');
@@ -141,7 +153,18 @@ export async function render(root) {
   store = await createKonbini(holder, {
     items: KONBINI,
     reducedMotion: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
-    onPick: (k) => showItem(k, window.innerWidth < 900),
+    // 點 3D 裡的商品：在畫面上彈出小卡片，不捲動頁面（完整說明同時更新在下方）
+    onPick: (k) => {
+      showItem(k, false);
+      const pop = root.querySelector('#scenePop');
+      pop.innerHTML = `
+        <span class="pop-emoji">${k.emoji}</span>
+        <span class="pop-main"><b class="jp">${esc(k.jp)}</b><small class="jp">${esc(k.kana)}</small><span>${esc(k.zh)}・<b class="pop-price">¥${k.price.toLocaleString()}</b></span></span>
+        ${sayBtn(k.kana)}
+        <button class="linklike" id="popMore">詳細</button>
+        <button class="pop-close" id="popClose" aria-label="關閉">✕</button>`;
+      pop.hidden = false;
+    },
   });
   return () => {
     alive = false;

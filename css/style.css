@@ -415,7 +415,7 @@ body.hide-romaji .romaji { visibility: hidden; }
 
 /* ---------- 假名雨 ---------- */
 .rain-wrap { max-width: 900px; margin: 0 auto; }
-.rain-canvas { position: relative; height: min(68vh, 560px); border-radius: 20px; overflow: hidden; background: #0d1033; }
+.rain-canvas { position: relative; height: min(68vh, 560px); height: min(68svh, 560px); border-radius: 20px; overflow: hidden; background: #0d1033; }
 .rain-canvas canvas { width: 100% !important; height: 100% !important; display: block; }
 .rain-overlay {
   position: absolute; inset: 0; z-index: 2; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
@@ -548,10 +548,8 @@ body.kb-open .rain-hud { margin: 8px 0 0; }
 
 /* ---------- 招牌 ---------- */
 .street-wrap { position: relative; }
-.street { height: min(62vh, 520px); border-radius: 20px; overflow: hidden; background: #1b2140; }
+.street { height: min(62vh, 520px); height: min(62svh, 520px); min-height: 280px; border-radius: 20px; overflow: hidden; background: #1b2140; }
 .street canvas { width: 100% !important; height: 100% !important; display: block; }
-.street-ctrl { position: absolute; left: 14px; bottom: 14px; display: flex; gap: 6px; }
-.street-ctrl .btn { background: rgb(255 255 255 / 0.85); color: #111; }
 .street-info { position: absolute; right: 14px; top: 14px; width: min(280px, calc(100% - 28px)); background: color-mix(in srgb, var(--surface) 92%, transparent); backdrop-filter: blur(6px); }
 .sign-plate {
   display: inline-block; background: var(--indigo); color: #fff; font-size: 2rem; font-weight: 900;
@@ -800,9 +798,33 @@ body.no-scroll { overflow: hidden; }
 
 /* 3D 場景共用 */
 .scene-wrap { position: relative; margin-bottom: 16px; }
-.scene3d { height: min(60vh, 520px); min-height: 300px; border-radius: 20px; overflow: hidden; background: #f4f2ee; touch-action: none; }
+.scene3d { height: min(60vh, 520px); height: min(60svh, 520px); min-height: 280px; border-radius: 20px; overflow: hidden; background: #f4f2ee; touch-action: pan-y; }
+/* 3D 場景下方的操作列（不蓋住畫面，手機也好按） */
+.scene-pad { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 10px 0 18px; flex-wrap: wrap; }
+.scene-pad[hidden] { display: none; }
+.pad-group { display: flex; gap: 6px; }
+.pad-btn { width: 48px; height: 48px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font-size: 1.3rem; cursor: pointer; display: grid; place-items: center; touch-action: manipulation; }
+.pad-btn:active, .scene-pad .btn:active { transform: scale(0.94); }
+.pad-shelves { display: flex; gap: 6px; flex: 1; justify-content: center; flex-wrap: wrap; }
+@media (max-width: 760px) {
+  /* 手機：街景的方向鍵一排置中，上一個／下一個招牌各佔一半 */
+  #streetPad { display: grid; grid-template-columns: 1fr 1fr; }
+  #streetPad .pad-group { grid-column: 1 / -1; order: -1; justify-content: center; }
+  #streetPad .btn { min-height: 46px; }
+}
+.scene-pad .btn { touch-action: manipulation; }
+/* 點 3D 商品時，在畫面上彈出的小卡片 */
+.scene-pop { position: absolute; left: 10px; right: 10px; bottom: 10px; display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 14px; background: color-mix(in srgb, var(--surface) 94%, transparent); backdrop-filter: blur(6px); box-shadow: var(--shadow); animation: enter 0.25s ease; max-width: 520px; margin: 0 auto; }
+.scene-pop[hidden] { display: none; }
+.pop-emoji { font-size: 1.8rem; }
+.pop-main { display: flex; flex-direction: column; flex: 1; min-width: 0; line-height: 1.35; }
+.pop-main b.jp { font-size: 1.1rem; }
+.pop-main small { color: var(--muted); }
+.pop-price { color: var(--red); }
+.info-close { position: absolute; top: 4px; right: 4px; }
+.street-info { padding-right: 40px; }
+.pop-close { border: 0; background: none; color: var(--muted); font-size: 1.1rem; width: 36px; height: 36px; cursor: pointer; }
 .scene3d canvas { width: 100% !important; height: 100% !important; display: block; }
-.scene-ctrl { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
 .konbini-info { margin-bottom: 24px; }
 .item-emoji { font-size: 2.2rem; }
 .v-price { font-weight: 700; color: var(--red); font-size: 0.9rem; }
@@ -991,7 +1013,11 @@ body.no-scroll { overflow: hidden; }
   .kana-layout, .menu-layout { grid-template-columns: minmax(0, 1fr) 300px; gap: 16px; }
 }
 @media (max-width: 900px) {
-  .street-info { position: static; width: auto; margin-top: 12px; }
+  /* 手機：招牌說明疊在 3D 畫面底部（緊鄰下方的按鈕），點了馬上看得到 */
+  .street-info { left: 10px; right: 10px; top: auto; bottom: 10px; width: auto; padding: 10px 14px; }
+  .street-info .sign-plate { font-size: 1.3rem; padding: 2px 12px; margin-bottom: 4px; }
+  .street-info .zh-big { font-size: 1.05rem; margin: 4px 0 0; }
+  .street-info .warn { font-size: 0.85rem; margin: 4px 0 0; }
   /* 平板直向的首頁：文字移到下方，避免壓在 3D 富士山上 */
   .hero { min-height: 560px; align-items: end; }
   .hero-copy { max-width: none; padding: 28px 32px; background: linear-gradient(180deg, transparent, rgb(255 240 235 / 0.8) 30%); border-radius: 0 0 24px 24px; }
@@ -1023,7 +1049,7 @@ body.no-scroll { overflow: hidden; }
   .sheet-close { display: inline-flex; align-items: center; position: absolute; right: 10px; top: 4px; min-height: 40px; padding: 0 12px; border: 0; background: none; color: var(--muted); font-weight: 700; cursor: pointer; }
   .sheet-scrim { display: block; position: fixed; inset: 0; z-index: 59; background: rgb(0 0 0 / 0.35); }
   .sheet-scrim[hidden] { display: none; }
-  .rain-canvas { height: min(56vh, 480px); }
+  .rain-canvas { height: min(56vh, 480px); height: min(56svh, 480px); }
   /* 手機觸控目標至少 40px */
   .say { width: 40px; height: 40px; }
   .small-say { width: 36px; height: 36px; }

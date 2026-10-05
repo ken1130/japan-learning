@@ -1,16 +1,14 @@
 // 假名雨小遊戲：假名從天空落下，輸入羅馬拼音把它打散；落到鳥居下就扣一條命
 import * as THREE from 'three';
-import { textTexture, fontsReady, disposeScene, autoResize } from './textTexture.js';
+import { textTexture, fontsReady, disposeScene, autoResize, makeRenderer } from './textTexture.js';
 
 const GROUND_Y = -3.6;
 
 export async function createKanaRain(container, { onHit, onMiss, onOver } = {}) {
-  await fontsReady();
+  // 遊戲中會出現所有假名
+  await fontsReady([...Array(0x30f6 - 0x3041)].map((_, i) => String.fromCharCode(0x3041 + i)).join(''));
 
-  const renderer = new THREE.WebGLRenderer({ antialias: true });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  renderer.outputColorSpace = THREE.SRGBColorSpace;
-  container.appendChild(renderer.domElement);
+  const renderer = makeRenderer(container);
 
   const scene = new THREE.Scene();
   scene.background = skyTexture();

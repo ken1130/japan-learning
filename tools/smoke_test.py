@@ -40,7 +40,7 @@ def interactions(page, errors, log, vp="desktop"):
         except Exception as e:  # noqa: BLE001
             errors.append(f"{name}: {e}".splitlines()[0])
 
-    def go(r):
+    def go(r):  # noqa: E306
         page.goto(f"{BASE}/#/{r}")
         page.wait_for_selector("#app h1", timeout=8000)
         page.wait_for_timeout(400)
@@ -157,11 +157,58 @@ def interactions(page, errors, log, vp="desktop"):
         assert r["kb"], "沒有偵測到鍵盤"
         assert r["hudBottom"] <= 380, f"輸入列被鍵盤擋住（底部在 {r['hudBottom']}px）"
 
+    def touch_page():
+        # 觸控手機的獨立分頁（has_touch + is_mobile），測 3D 場景的觸控行為
+        ctx2 = page.context.browser.new_context(viewport={"width": 375, "height": 780}, has_touch=True, is_mobile=True, service_workers="block")
+        tp = ctx2.new_page()
+        tp.on("pageerror", lambda e: errors.append(f"touch pageerror: {e}"))
+        return ctx2, tp
+
+    def street_touch():
+        ctx2, tp = touch_page()
+        try:
+            tp.goto(f"{BASE}/#/signs")
+            tp.wait_for_selector("#street canvas", timeout=15000)
+            tp.wait_for_timeout(800)
+            tp.locator("#street").scroll_into_view_if_needed()
+            y0 = tp.evaluate("scrollY")
+            tp.locator("#street").tap()
+            tp.wait_for_timeout(300)
+            assert abs(tp.evaluate("scrollY") - y0) < 2, "點 3D 畫面時頁面跑掉了"
+            tp.tap('[data-nav="next"]')
+            tp.wait_for_timeout(900)
+            assert tp.locator("#signInfo .sign-plate").count() == 1, "按「下一個招牌」沒有顯示招牌"
+            box = tp.locator("#signInfo").bounding_box()
+            assert box and 0 <= box["y"] < 780, "招牌說明不在畫面上"
+            assert tp.evaluate("getComputedStyle(document.querySelector('#street canvas')).touchAction") == "pan-y"
+        finally:
+            ctx2.close()
+
+    def konbini_touch():
+        ctx2, tp = touch_page()
+        try:
+            tp.goto(f"{BASE}/#/konbini")
+            tp.wait_for_selector("#store canvas", timeout=15000)
+            tp.wait_for_timeout(800)
+            tp.locator("#store").scroll_into_view_if_needed()
+            y0 = tp.evaluate("scrollY")
+            b = tp.locator("#store").bounding_box()
+            # 點畫面中間偏上：後方貨架的商品
+            for fx, fy in [(0.5, 0.42), (0.5, 0.5), (0.42, 0.42), (0.58, 0.5)]:
+                tp.touchscreen.tap(b["x"] + b["width"] * fx, b["y"] + b["height"] * fy)
+                tp.wait_for_timeout(300)
+                if tp.locator("#scenePop").is_visible():
+                    break
+            assert tp.locator("#scenePop").is_visible(), "點商品沒有彈出小卡片"
+            assert abs(tp.evaluate("scrollY") - y0) < 2, "點商品時頁面跑掉了"
+        finally:
+            ctx2.close()
+
     checks = []
     if vp == "desktop":
         checks.append(("側欄塞得下", sidebar_fits))
     if vp == "phone":
-        checks += [("五十音底部面板", kana_sheet), ("假名雨鍵盤", rain_keyboard)]
+        checks += [("五十音底部面板", kana_sheet), ("假名雨鍵盤", rain_keyboard), ("街景觸控", street_touch), ("便利商店觸控", konbini_touch)]
     for name, fn in checks:
         step(name, fn)
 

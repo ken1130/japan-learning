@@ -1,14 +1,12 @@
 // 首頁 3D 場景：富士山、夕陽、飄落的櫻花、漂浮的假名方塊（點擊會發音）
 import * as THREE from 'three';
-import { textTexture, fontsReady, disposeScene, autoResize } from './textTexture.js';
+import { textTexture, fontsReady, disposeScene, autoResize, makeRenderer, watchVisible, isTouchDevice } from './textTexture.js';
 
 export async function createHero(container, { kana = [], onPick, reducedMotion = false } = {}) {
-  await fontsReady();
+  await fontsReady(kana.map((k) => k.k + k.r).join(''));
 
-  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  renderer.outputColorSpace = THREE.SRGBColorSpace;
-  container.appendChild(renderer.domElement);
+  const renderer = makeRenderer(container, { alpha: true });
+  const vis = watchVisible(container);
 
   const scene = new THREE.Scene();
   scene.fog = new THREE.Fog(0xf3d9c6, 14, 30);
@@ -60,7 +58,7 @@ export async function createHero(container, { kana = [], onPick, reducedMotion =
   });
 
   // 櫻花瓣（InstancedMesh）
-  const PETALS = reducedMotion ? 40 : 160;
+  const PETALS = reducedMotion ? 40 : isTouchDevice() ? 90 : 160;
   const petalGeo = new THREE.PlaneGeometry(0.14, 0.09);
   const petalMat = new THREE.MeshBasicMaterial({ color: 0xf7b7c8, side: THREE.DoubleSide, transparent: true, opacity: 0.9 });
   const petals = new THREE.InstancedMesh(petalGeo, petalMat, PETALS);
@@ -103,6 +101,12 @@ export async function createHero(container, { kana = [], onPick, reducedMotion =
   let raf = 0;
   const speed = reducedMotion ? 0.25 : 1;
   function tick() {
+    raf = requestAnimationFrame(tick);
+    // 捲到下面看不到首頁動畫時就暫停，手機捲動才順
+    if (!vis.visible) {
+      clock.getDelta();
+      return;
+    }
     const dt = Math.min(clock.getDelta(), 0.05) * speed;
     const t = clock.elapsedTime * speed;
 
@@ -141,13 +145,13 @@ export async function createHero(container, { kana = [], onPick, reducedMotion =
     petals.instanceMatrix.needsUpdate = true;
 
     renderer.render(scene, camera);
-    raf = requestAnimationFrame(tick);
   }
   tick();
 
   return () => {
     cancelAnimationFrame(raf);
     stopResize();
+    vis.stop();
     renderer.domElement.removeEventListener('pointermove', onMove);
     renderer.domElement.removeEventListener('click', onClick);
     disposeScene(scene);
